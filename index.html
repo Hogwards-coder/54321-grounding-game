@@ -1,0 +1,144 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>5-4-3-2-1: In the Now</title>
+<style>
+  body { font-family: sans-serif; background: #f0f4f8; text-align: center; color: #333; background-image: url('background 1.jpg'); background-size: cover; background-repeat: no-repeat; background-position: center; }
+  .container { max-width: 600px; margin: auto; padding: 20px; }
+  .hidden { display: none; }
+  .card { background: white; padding: 20px; margin: 10px 0; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+  input[type='text'] { width: 80%; padding: 10px; margin: 5px 0; border-radius: 8px; border: 1px solid #6cb4b8; background: #e8f6f7; }
+  input[type='file'] { margin: 5px 0; }
+  button { padding: 10px 20px; margin: 10px; border: none; border-radius: 5px; background: #6cb4b8; color: white; cursor: pointer; }
+  .quote { font-style: italic; margin: 10px 0; color: #5a7d7c; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>5-4-3-2-1: In the Now</h1>
+  <div id="startSection" class="card">
+    <p>Ground yourself every Tuesday. Current Score: <span id="score">0</span></p>
+    <button onclick="startGame()">Start</button>
+    <button onclick="showHistory()">View History</button>
+    <p id="message" style="color:#b94a48;"></p>
+  </div>
+  <div id="gameSection" class="hidden">
+    <div class="quote" id="quote"></div>
+    <div id="step"></div>
+    <button onclick="nextStep()">Next</button>
+  </div>
+  <div id="reflectionSection" class="hidden">
+    <h2>Reflection</h2>
+    <div id="summary"></div>
+    <p>Your score: <span id="finalScore"></span></p>
+    <button onclick="restartGame()">Restart</button>
+  </div>
+  <div id="historySection" class="hidden card">
+    <h3>Your History</h3>
+    <div id="historyContent"></div>
+    <button onclick="closeHistory()">Close</button>
+  </div>
+</div>
+<audio id="bgSound1" src="spring-forest-nature-332842.mp3" loop autoplay></audio>
+<audio id="bgSound2" src="Ghostrifter-Official-Purple-Dream(chosic.com).mp3"></audio>
+<audio id="bgSound3" src="ocean-waves-250310.mp3"></audio>
+<script>
+let stepIndex=0;
+let answers={ see:[], seeImages:[], touch:[], hear:[], smell:[], taste:'' };
+let score=parseInt(localStorage.getItem('groundingScore')||'0');
+document.getElementById('score').innerText=score;
+const steps=[
+  { prompt:'5 things you can see', count:5, type:'see', upload:true, bg:'background 2.jpg' },
+  { prompt:'4 things you can touch', count:4, type:'touch', bg:'background 3.jpeg' },
+  { prompt:'3 things you can hear', count:3, type:'hear', bg:'background 4.jpg' },
+  { prompt:'2 things you can smell', count:2, type:'smell', bg:'background 5.jpg' },
+  { prompt:'1 thing you can taste', count:1, type:'taste', bg:'background 1.jpg' }
+];
+const quotes=["You are stronger than you think.","Breathe. You are here.","Small steps matter.","Presence is your power.","Let go of what you can't control."];
+function startGame(){
+  const today=new Date().getDay();
+  const lastPlayed=localStorage.getItem('lastPlayed');
+  const todayStr=new Date().toLocaleDateString();
+  if(today!==2){ document.getElementById('message').innerText='See you next Tuesday!'; return; }
+  if(lastPlayed===todayStr){ document.getElementById('message').innerText='Already played today!'; return; }
+  document.getElementById('message').innerText='';
+  document.getElementById('startSection').classList.add('hidden');
+  document.getElementById('gameSection').classList.remove('hidden');
+  stepIndex=0;
+  showStep();
+}
+function showStep(){
+  const step=steps[stepIndex];
+  document.body.style.backgroundImage=`url('${step.bg}')`;
+  const randomQuote=quotes[Math.floor(Math.random()*quotes.length)];
+  document.getElementById('quote').innerText=randomQuote;
+  let html=`<h2>${step.prompt}</h2>`;
+  for(let i=0;i<step.count;i++){
+    html+=`<input type='text' id='input_${i}' placeholder='Enter...'><br>`;
+    if(step.upload) html+=`<input type='file' id='file_${i}' accept='image/*'><br>`;
+  }
+  document.getElementById('step').innerHTML=html;
+  document.getElementById('bgSound2').play();
+}
+function nextStep(){
+  const step=steps[stepIndex];
+  let entries=[]; let images=[];
+  for(let i=0;i<step.count;i++){
+    const val=document.getElementById('input_'+i).value;
+    entries.push(val);
+    if(step.upload){
+      const file=document.getElementById('file_'+i).files[0];
+      if(file){
+        const reader=new FileReader();
+        reader.onload=function(e){ images.push(e.target.result); if(images.length===step.count) saveStep(entries,images); };
+        reader.readAsDataURL(file);
+      } else { images.push(''); if(images.length===step.count) saveStep(entries,images); }
+    }
+  }
+  if(!step.upload) saveStep(entries);
+}
+function saveStep(entries,images=[]){
+  const step=steps[stepIndex];
+  answers[step.type]=step.count===1?entries[0]:entries;
+  if(step.upload) answers.seeImages=images;
+  stepIndex++;
+  if(stepIndex<steps.length){ showStep(); }
+  else{ finishGame(); }
+}
+function finishGame(){
+  document.getElementById('bgSound3').play();
+  score++;
+  localStorage.setItem('groundingScore',score);
+  localStorage.setItem('lastPlayed',new Date().toLocaleDateString());
+  let history=JSON.parse(localStorage.getItem('groundingHistory')||'[]');
+  history.push({ date:new Date().toLocaleDateString(), answers });
+  localStorage.setItem('groundingHistory',JSON.stringify(history));
+  document.getElementById('gameSection').classList.add('hidden');
+  document.getElementById('reflectionSection').classList.remove('hidden');
+  document.getElementById('finalScore').innerText=score;
+  let summary='';
+  for(const key in answers){
+    summary+=`<h3>${key.toUpperCase()}</h3>`;
+    if(Array.isArray(answers[key])) summary+=answers[key].map((a,i)=>{ if(key==='seeImages'&&a) return `<img src='${a}' width='50'>`; return `• ${a}`; }).join('<br>');
+    else summary+=`• ${answers[key]}`;
+  }
+  document.getElementById('summary').innerHTML=summary;
+}
+function showHistory(){
+  const history=JSON.parse(localStorage.getItem('groundingHistory')||'[]');
+  let html=history.length? history.map(h=>`<strong>${h.date}</strong><br>`+
+    Object.keys(h.answers).map(k=>{
+      if(Array.isArray(h.answers[k])) return `<em>${k}:</em> `+h.answers[k].map((a,i)=>{ if(k==='seeImages'&&a) return `<img src='${a}' width='30'>`; return a; }).join(', ');
+      else return `<em>${k}:</em> ${h.answers[k]}`;
+    }).join('<br>')).join('<hr>'):'No history yet.';
+  document.getElementById('historyContent').innerHTML=html;
+  document.getElementById('historySection').classList.remove('hidden');
+}
+function closeHistory(){ document.getElementById('historySection').classList.add('hidden'); }
+function restartGame(){ location.reload(); }
+</script>
+</body>
+</html>
